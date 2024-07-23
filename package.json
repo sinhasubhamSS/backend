@@ -1,0 +1,15 @@
+{
+  "name": "allone",
+  "version": "1.0.0",
+  "description": "backend devlopment",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "backend",
+    "learn"
+  ],
+  "author": "shubhamsinha",
+  "license": "ISC"
+}

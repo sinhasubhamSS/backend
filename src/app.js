@@ -19,6 +19,11 @@ app.use(express.static("public"))//stores the image  in the own server #public i
 //whose cookie -> yhe user cookies and also set the user cookies
 app.use(cookieParser())
 
+//routes
+import userRouter from './routes/user.routes.js'//we can give our name when we export using default
+
+//routes declaration
+app.use("/api/v1/users",userRouter)
 
 
 export{app}

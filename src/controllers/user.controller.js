@@ -4,6 +4,23 @@ import { ApiError } from "../utils/ApiError.js";
 import { User } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/clodinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
+const generateAccessAndRefreshTokens = async (userId)=>{
+  try {
+    const user = await User.findById(userId)
+    const accessToken = user.generateAccessToken()
+    const refreshToken = user.generatRefreshToken()
+    //we give access token to user but keep refresh token in databse so tht user can easily logged in
+
+    user.refreshToken = refreshToken
+    user.save({ validateBeforeSave: false })
+    return { accessToken, refreshToken }
+
+  } catch (error)
+   {
+    throw new ApiError(500, "something went wrong while genetarting the refresh and acess token")
+
+  }
+}
 const registerUser = asyncHandler(async (req, res) => {
   //steps to register user
   /*
@@ -32,7 +49,6 @@ const registerUser = asyncHandler(async (req, res) => {
   ) {
     throw new ApiError(400, "All Fields Are Required");
   }
-
   const existedUser = await User.findOne({
     $or: [{ username }, { email }],
   });
@@ -83,5 +99,72 @@ const registerUser = asyncHandler(async (req, res) => {
     .status(201)
     .json(new ApiResponse(200, createrUser, "User registered succesffully"));
 });
-const loginUser=asyncHandler(async(req,res))
-export { registerUser };
+const loginUser = asyncHandler(async (req, res) => {
+  //req body sa data la aao
+  /*check if username or email is ther or not
+  check if the user is their or not and not then send to create account
+  if user is their check for the password 
+  access and refresh token generate and send to the user for future use 
+  send tooken in cookies */
+  const { email, userName, password } = req.body
+  if (!userName || !email) {
+    throw new ApiError(400, "Username or email is required")
+  }
+  const user = User.findOne({
+    $or: [{ userName }, { email }]
+  })
+  if (!user) {
+    throw new ApiError(404, "User doen not exist")
+  }
+  //if user is their check the password using bcrypt defined in the user schema
+  //Note: User and user are different User is monogoDb ka moongose ka object hai it has all methods of mongoDb
+
+  const ispasswordValid = await user.isPasswordCorrect(password)
+  if (!ispasswordValid) {
+    throw new ApiError(401, "User does not exist")
+  }
+
+  const { accessToken, refreshToken } = await generateAccessAndRefreshTokens((user._id))
+  const loggedInUser = User.findById(user_id).select("-password -refreshToken")
+  const options = {
+    httpOnly: true,
+    secure: true
+  }
+  return res.status(200)
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", refreshToken, options)
+    .json(
+      new ApiResponse(
+        200, {
+        user: loggedInUser, accessToken, refreshToken
+      },
+        "User logged in successfully"
+      )
+    )
+
+})
+const logoutUser = asyncHandler(async (req, res) => {
+  User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $set:
+      {
+        refreshToken: undefined
+      },
+
+    },
+    {
+      new: true
+    }
+  )
+  const options = {
+    httpOnly: true,
+    secure: true
+  }
+  return res.status(200)
+    .clearCookie("accessToken", accessToken, options)
+    .clearCookie("refreshToken", refreshToken, options)
+    .json(new ApiResponse(200,{},"User Logged Out Successfully"))
+})
+//then create access abd refresh token .....as it is reusable part of code lets out it in the methods
+export { registerUser, loginUser, logoutUser };

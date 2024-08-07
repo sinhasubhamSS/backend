@@ -208,6 +208,95 @@ if(!refreshAccesToken){
   }
 
 })
+const chnageCurrentPassword=asyncHandler(async(req,res)=>{
+  const{oldPassword,newPassword}=req.body
+  const user=await User.findById(req.user?._id)
+  const isPasswordCorrect=user.isPasswordCorrect(oldPassword)
+  if(!isPasswordCorrect){
+    throw new ApiError(401,"Old password is incorrect")
+  }
+  //settimg new password
+  user.password=newPassword
+  await user.save({validateBeforeSave:false})
+  return res
+  .status(200)
+  .json(new ApiResponse(200,{},"password changed"))
+
+})
+const getCurrentUser=asyncHandler(async(req,res)=>{
+  return res
+  .status(200)
+  .json(200,req.user,"current user fetched successfully")
+})
+const updateAccountdetail=asyncHandler(async(req,res)=>{
+  const{fullName,email}=req.body
+  //1:56:50 check oce again
+  if(!fullName || !email){
+    throw new ApiError(400,"All fields are required")
+  }
+  const user=User.findByIdAndUpdate(req.user?._id,{
+    $set:{
+      fullName,
+      email:email
+    }
+  },
+  {new:true}).select("-password")
+  return res
+  .status(200)
+  .json(new ApiResponse(200,user,"Account details uploaded successfully"))
+})
+const updateUserAvatar=asyncHandler(async(req,res)=>{
+  const avatarLocalPath=req.file?.path
+  if(!avatarLocalPath){
+    throw new ApiError(400,"Avatar file is missing")
+  }
+  const avatar=await uploadOnCloudinary(avatarLocalPath)
+  if(!avatar.url){
+    throw new ApiError(400,"Error while uploading the avatar")
+
+  }
+  await User.findByIdAndUpdate(req.user?._id,
+    {
+      $set:{
+        avatar:avatar.url
+      }
+    },{
+      new:true
+    }
+
+  ).select("-password")
+  return res
+  .status(200)
+  .json(
+    new ApiError(200,user,"Cover Image updated")
+  )
+})
+const updateUserCoverImage=asyncHandler(async(req,res)=>{
+  const CoverImageLocalPath=req.file?.path
+  if(!CoverImageLocalPath){
+    throw new ApiError(400,"Avatar file is missing")
+  }
+  const coverImage=await uploadOnCloudinary(CoverImageLocalPath)
+  if(!coverImage.url){
+    throw new ApiError(400,"Error while uploading the avatar")
+
+  }
+  const user=await User.findByIdAndUpdate(req.user?._id,
+    {
+      $set:{
+        coverImage:coverImage.url
+      }
+    },{
+      new:true
+    }
+
+  ).select("-password")
+  return res
+  .status(200)
+  .json(
+    new ApiError(200,user,"Cover Image updated")
+  )
+})
 
 //then create access abd refresh token .....as it is reusable part of code lets out it in the methods
-export { registerUser, loginUser, logoutUser ,refreshAccesToken};
+export { registerUser, loginUser, logoutUser ,refreshAccesToken,chnageCurrentPassword,getCurrentUser,updateAccountdetail};
